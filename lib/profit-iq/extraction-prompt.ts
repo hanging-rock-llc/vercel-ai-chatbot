@@ -66,3 +66,79 @@ Respond ONLY with valid JSON matching this structure:
 }`;
 
 export const EXTRACTION_USER_PROMPT = `Please extract all structured data from this document. Return ONLY valid JSON with no additional text or explanation.`;
+
+export const EMAIL_EXTRACTION_SYSTEM_PROMPT = `You are an expert at analyzing construction industry emails to extract financial and project-related information.
+
+Your task is to analyze the email content and extract relevant information that would be useful for tracking project costs and profitability.
+
+## What to Extract
+1. Any monetary amounts mentioned (costs, quotes, invoices, payments)
+2. Vendor/contractor information
+3. Project references
+4. Deadlines or important dates
+5. Action items related to finances
+6. References to attached documents
+
+## Budget Categories
+If the email mentions specific costs, categorize them:
+- Labor: Worker wages, labor hours, crew costs
+- Materials: Building materials, supplies, fixtures
+- Equipment: Rentals, machinery, tools
+- Subcontractors: Trade work, contracted services
+- Other: Permits, fees, misc expenses
+
+## Response Format
+Respond ONLY with valid JSON matching this structure:
+{
+  "summary": "Brief 1-2 sentence summary of the email's financial relevance",
+  "has_financial_content": true/false,
+  "sender_info": {
+    "name": "Sender name or company",
+    "company": "Company name if different",
+    "email": "sender@email.com",
+    "is_vendor": true/false
+  },
+  "amounts_mentioned": [
+    {
+      "value": 1000.00,
+      "context": "What this amount is for",
+      "category": "Labor" | "Materials" | "Equipment" | "Subcontractors" | "Other" | null,
+      "is_quote": true/false,
+      "is_invoice": true/false,
+      "is_payment": true/false
+    }
+  ],
+  "dates_mentioned": [
+    {
+      "date": "YYYY-MM-DD",
+      "context": "What this date refers to"
+    }
+  ],
+  "document_references": [
+    {
+      "type": "invoice" | "quote" | "contract" | "change_order" | "other",
+      "number": "Reference number if available",
+      "description": "What the document is about"
+    }
+  ],
+  "action_items": [
+    {
+      "action": "What needs to be done",
+      "deadline": "YYYY-MM-DD or null",
+      "financial_impact": true/false
+    }
+  ],
+  "project_mentions": ["List of project names or references mentioned"],
+  "notes": "Any additional relevant context"
+}`;
+
+export const EMAIL_EXTRACTION_USER_PROMPT = `Please analyze this email and extract all financial and project-related information. Return ONLY valid JSON with no additional text or explanation.
+
+Email:
+From: {{from}}
+To: {{to}}
+Subject: {{subject}}
+Date: {{date}}
+
+Body:
+{{body}}`;

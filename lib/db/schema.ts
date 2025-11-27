@@ -200,6 +200,7 @@ export const documentTypeEnum = [
   "estimate",
   "change_order",
   "receipt",
+  "email",
   "other",
 ] as const;
 export type ProjectDocumentType = (typeof documentTypeEnum)[number];
@@ -230,6 +231,8 @@ export const project = pgTable("Project", {
   contractValue: numeric("contractValue", { precision: 12, scale: 2 }),
   startDate: date("startDate"),
   endDate: date("endDate"),
+  // Unique token for email ingestion (used in forwarding address)
+  ingestToken: text("ingestToken").notNull().unique(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -255,7 +258,7 @@ export const budgetCategory = pgTable(
 
 export type BudgetCategoryRecord = InferSelectModel<typeof budgetCategory>;
 
-// Project Documents (invoices, quotes, estimates)
+// Project Documents (invoices, quotes, estimates, emails)
 export const projectDocument = pgTable("ProjectDocument", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   projectId: uuid("projectId")
@@ -286,6 +289,14 @@ export const projectDocument = pgTable("ProjectDocument", {
   documentDate: date("documentDate"),
   dueDate: date("dueDate"),
   totalAmount: numeric("totalAmount", { precision: 12, scale: 2 }),
+
+  // Email-specific fields
+  emailFrom: text("emailFrom"),
+  emailTo: text("emailTo"),
+  emailSubject: text("emailSubject"),
+  emailBody: text("emailBody"),
+  emailReceivedAt: timestamp("emailReceivedAt"),
+  parentDocumentId: uuid("parentDocumentId"), // Links attachments to parent email
 
   // Tracking
   confirmedAt: timestamp("confirmedAt"),

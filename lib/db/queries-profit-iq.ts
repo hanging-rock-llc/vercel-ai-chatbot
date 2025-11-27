@@ -3,6 +3,7 @@ import "server-only";
 import { and, asc, desc, eq, sql, sum } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { nanoid } from "nanoid";
 import { ChatSDKError } from "../errors";
 import {
   budgetCategory,
@@ -79,6 +80,9 @@ export async function createProject({
   endDate?: string;
 }): Promise<Project> {
   try {
+    // Generate unique ingest token for email forwarding
+    const ingestToken = nanoid(12);
+
     const [newProject] = await db
       .insert(project)
       .values({
@@ -89,6 +93,7 @@ export async function createProject({
         contractValue,
         startDate,
         endDate,
+        ingestToken,
       })
       .returning();
 
@@ -642,5 +647,128 @@ export async function createPromptExecution({
   } catch (_error) {
     console.error("Failed to log prompt execution:", _error);
     // Don't throw - logging failures shouldn't break the main flow
+  }
+}
+
+// =============================================================================
+// EMAIL INGESTION QUERIES
+// =============================================================================
+
+export async function getProjectByIngestToken({
+  ingestToken,
+}: {
+  ingestToken: string;
+}): Promise<Project | null> {
+  try {
+    const [result] = await db
+      .select()
+      .from(project)
+      .where(eq(project.ingestToken, ingestToken));
+    return result || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get project by ingest token"
+    );
+  }
+}
+
+export async function createEmailDocument({
+  projectId,
+  userId,
+  fileName,
+  filePath,
+  fileSize,
+  mimeType,
+  emailFrom,
+  emailTo,
+  emailSubject,
+  emailBody,
+  emailReceivedAt,
+  parentDocumentId,
+}: {
+  projectId: string;
+  userId: string;
+  fileName: string;
+  filePath: string;
+  fileSize?: number;
+  mimeType?: string;
+  emailFrom?: string;
+  emailTo?: string;
+  emailSubject?: string;
+  emailBody?: string;
+  emailReceivedAt?: Date;
+  parentDocumentId?: string;
+}): Promise<ProjectDocument> {
+  try {
+    const [doc] = await db
+      .insert(projectDocument)
+      .values({
+        projectId,
+        userId,
+        fileName,
+        filePath,
+        fileSize,
+        mimeType,
+        documentType: parentDocumentId ? undefined : "email", // Attachments get their own type
+        status: "pending",
+        emailFrom,
+        emailTo,
+        emailSubject,
+        emailBody,
+        emailReceivedAt,
+        parentDocumentId,
+      })
+      .returning();
+
+    return doc;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create email document"
+    );
+  }
+}
+
+export async function getEmailDocumentsByProjectId({
+  projectId,
+}: {
+  projectId: string;
+}): Promise<ProjectDocument[]> {
+  try {
+    return await db
+      .select()
+      .from(projectDocument)
+      .where(
+        and(
+          eq(projectDocument.projectId, projectId),
+          eq(projectDocument.documentType, "email")
+        )
+      )
+      .orderBy(desc(projectDocument.emailReceivedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get email documents by project id"
+    );
+  }
+}
+
+export async function getAttachmentsByParentDocumentId({
+  parentDocumentId,
+}: {
+  parentDocumentId: string;
+}): Promise<ProjectDocument[]> {
+  try {
+    return await db
+      .select()
+      .from(projectDocument)
+      .where(eq(projectDocument.parentDocumentId, parentDocumentId))
+      .orderBy(asc(projectDocument.createdAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get attachments by parent document id"
+    );
   }
 }

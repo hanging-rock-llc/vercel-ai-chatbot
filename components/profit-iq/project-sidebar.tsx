@@ -9,6 +9,7 @@ import {
   FileTextIcon,
   MessageSquareIcon,
   LayoutDashboardIcon,
+  MailIcon,
 } from "lucide-react";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,20 @@ export function ProjectSidebar({
                     >
                       <FileTextIcon className="size-4" />
                       <span>Documents</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === `/projects/${currentProjectId}/emails`}
+                  >
+                    <Link
+                      href={`/projects/${currentProjectId}/emails`}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <MailIcon className="size-4" />
+                      <span>Emails</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
