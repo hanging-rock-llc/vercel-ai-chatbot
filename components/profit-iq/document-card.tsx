@@ -113,7 +113,10 @@ export function DocumentCard({
   const showReviewButton = document.status === "extracted";
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
+    <div
+      data-testid="document-card"
+      className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+    >
       <div className="flex size-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
         <FileTextIcon className="size-5 text-red-600 dark:text-red-400" />
       </div>

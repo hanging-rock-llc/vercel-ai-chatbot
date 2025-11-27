@@ -101,6 +101,7 @@ export function ProjectChat({ projectId, projectName }: ProjectChatProps) {
           {messages.map((message) => (
             <div
               key={message.id}
+              data-testid="chat-message"
               className={cn(
                 "flex gap-3",
                 message.role === "user" ? "justify-end" : "justify-start"

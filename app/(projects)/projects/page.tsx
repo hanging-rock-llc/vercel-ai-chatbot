@@ -115,7 +115,7 @@ export default async function ProjectsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="transition-colors hover:bg-muted/50">
+                <Card data-testid="project-card" className="transition-colors hover:bg-muted/50">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">

@@ -35,6 +35,7 @@ export function MarginIndicator({
 
   return (
     <div
+      data-testid="margin-indicator"
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold",
         getBgColor(),
