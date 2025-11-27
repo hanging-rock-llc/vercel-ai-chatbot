@@ -1,9 +1,12 @@
 import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
+  date,
   foreignKey,
+  integer,
   json,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -171,3 +174,184 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// =============================================================================
+// PROFIT IQ SCHEMA - Construction Project Profitability Tracking
+// =============================================================================
+
+// Project status enum values
+export const projectStatusEnum = ["active", "completed", "on_hold"] as const;
+export type ProjectStatus = (typeof projectStatusEnum)[number];
+
+// Budget category enum values
+export const budgetCategoryEnum = [
+  "Labor",
+  "Materials",
+  "Equipment",
+  "Subcontractors",
+  "Other",
+] as const;
+export type BudgetCategory = (typeof budgetCategoryEnum)[number];
+
+// Document type enum values
+export const documentTypeEnum = [
+  "invoice",
+  "quote",
+  "estimate",
+  "change_order",
+  "receipt",
+  "other",
+] as const;
+export type ProjectDocumentType = (typeof documentTypeEnum)[number];
+
+// Document status enum values
+export const documentStatusEnum = [
+  "pending",
+  "processing",
+  "extracted",
+  "confirmed",
+  "rejected",
+  "failed",
+] as const;
+export type DocumentStatus = (typeof documentStatusEnum)[number];
+
+// Projects table
+export const project = pgTable("Project", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  name: text("name").notNull(),
+  clientName: text("clientName"),
+  address: text("address"),
+  status: varchar("status", { enum: projectStatusEnum })
+    .notNull()
+    .default("active"),
+  contractValue: numeric("contractValue", { precision: 12, scale: 2 }),
+  startDate: date("startDate"),
+  endDate: date("endDate"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type Project = InferSelectModel<typeof project>;
+
+// Budget Categories (per project)
+export const budgetCategory = pgTable(
+  "BudgetCategory",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("projectId")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    category: varchar("category", { enum: budgetCategoryEnum }).notNull(),
+    estimatedAmount: numeric("estimatedAmount", {
+      precision: 12,
+      scale: 2,
+    }).default("0"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  }
+);
+
+export type BudgetCategoryRecord = InferSelectModel<typeof budgetCategory>;
+
+// Project Documents (invoices, quotes, estimates)
+export const projectDocument = pgTable("ProjectDocument", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  projectId: uuid("projectId")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+
+  // File info
+  fileName: text("fileName").notNull(),
+  filePath: text("filePath").notNull(),
+  fileSize: integer("fileSize"),
+  mimeType: text("mimeType"),
+
+  // Classification
+  documentType: varchar("documentType", { enum: documentTypeEnum }),
+
+  // Extraction status
+  status: varchar("status", { enum: documentStatusEnum })
+    .notNull()
+    .default("pending"),
+  rawExtraction: jsonb("rawExtraction"),
+
+  // Vendor info (denormalized for quick access)
+  vendorName: text("vendorName"),
+  documentNumber: text("documentNumber"),
+  documentDate: date("documentDate"),
+  dueDate: date("dueDate"),
+  totalAmount: numeric("totalAmount", { precision: 12, scale: 2 }),
+
+  // Tracking
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type ProjectDocument = InferSelectModel<typeof projectDocument>;
+
+// Line Items (extracted from documents)
+export const lineItem = pgTable("LineItem", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  documentId: uuid("documentId")
+    .notNull()
+    .references(() => projectDocument.id, { onDelete: "cascade" }),
+  projectId: uuid("projectId")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+
+  // Item details
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }),
+  unit: text("unit"),
+  unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }),
+  total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+
+  // Categorization
+  category: varchar("category", { enum: budgetCategoryEnum }),
+  costCode: text("costCode"),
+
+  // Metadata
+  sortOrder: integer("sortOrder"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type LineItem = InferSelectModel<typeof lineItem>;
+
+// Prompt Executions (for tracking AI usage and iteration)
+export const promptExecution = pgTable("PromptExecution", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  promptId: text("promptId").notNull(),
+  projectId: uuid("projectId").references(() => project.id, {
+    onDelete: "set null",
+  }),
+  documentId: uuid("documentId").references(() => projectDocument.id, {
+    onDelete: "set null",
+  }),
+
+  // Metrics
+  inputTokens: integer("inputTokens"),
+  outputTokens: integer("outputTokens"),
+  latencyMs: integer("latencyMs"),
+
+  // Response
+  rawResponse: text("rawResponse"),
+  parsedResponse: jsonb("parsedResponse"),
+
+  // Provider tracking
+  metadata: jsonb("metadata").default({}),
+
+  // Quality
+  extractionAccuracy: numeric("extractionAccuracy", { precision: 5, scale: 2 }),
+  humanRating: integer("humanRating"),
+  humanFeedback: text("humanFeedback"),
+
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type PromptExecution = InferSelectModel<typeof promptExecution>;

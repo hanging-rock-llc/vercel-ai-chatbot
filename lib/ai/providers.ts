@@ -32,5 +32,6 @@ export const myProvider = isTestEnvironment
         }),
         "title-model": gateway.languageModel("xai/grok-2-1212"),
         "artifact-model": gateway.languageModel("xai/grok-2-1212"),
+        "extraction-model": gateway.languageModel("xai/grok-2-vision-1212"),
       },
     });
